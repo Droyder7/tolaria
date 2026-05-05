@@ -708,15 +708,19 @@ export default defineConfig({
   define: {
     ...(process.env.CI || (process.env.TAURI_PLATFORM && !process.env.TAURI_DEBUG)
       ? {}
-      : { __DEMO_VAULT_PATH__: JSON.stringify(path.resolve(__dirname, 'demo-vault-v2')) }),
+      : {
+          __DEMO_VAULT_PATH__: JSON.stringify(
+            process.env.WEB_VAULT_PATH ?? '/app/vault_store/default',
+          ),
+        }),
   },
 
   // Prevent vite from obscuring Rust errors
   clearScreen: false,
 
-  // Tauri expects a fixed port
+  // Port 3000 for Emergent web mode (Tauri dev uses 5202, web POC uses 3000)
   server: {
-    port: 5202,
+    port: Number(process.env.PORT || 3000),
     strictPort: true,
     allowedHosts: true,
     watch: {
