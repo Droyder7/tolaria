@@ -12,6 +12,7 @@ export function useDialogs() {
   const [showConflictResolver, setShowConflictResolver] = useState(false)
   const [showCreateViewDialog, setShowCreateViewDialog] = useState(false)
   const [editingView, setEditingView] = useState<{ filename: string; definition: ViewDefinition } | null>(null)
+  const [showGraph, setShowGraph] = useState(false)
 
   const openCreateType = useCallback(() => setShowCreateTypeDialog(true), [])
   const closeCreateType = useCallback(() => setShowCreateTypeDialog(false), [])
@@ -34,6 +35,8 @@ export function useDialogs() {
     setEditingView({ filename, definition })
     setShowCreateViewDialog(true)
   }, [])
+  const openGraph = useCallback(() => setShowGraph(true), [])
+  const closeGraph = useCallback(() => setShowGraph(false), [])
 
   return {
     showCreateTypeDialog, openCreateType, closeCreateType,
@@ -45,5 +48,6 @@ export function useDialogs() {
     showSearch, openSearch, closeSearch,
     showConflictResolver, openConflictResolver, closeConflictResolver,
     showCreateViewDialog, openCreateView, closeCreateView, editingView, openEditView,
+    showGraph, openGraph, closeGraph,
   }
 }

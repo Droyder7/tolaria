@@ -74,6 +74,7 @@ interface SidebarProps {
   canGoBack?: boolean
   canGoForward?: boolean
   loading?: boolean
+  onOpenGraph?: () => void
 }
 
 interface SidebarNavigationProps extends Pick<
@@ -103,6 +104,7 @@ interface SidebarNavigationProps extends Pick<
   | 'onCreateNewType'
   | 'locale'
   | 'loading'
+  | 'onOpenGraph'
 > {
   activeCount: number
   archivedCount: number
@@ -379,6 +381,7 @@ function SidebarTopNavigation(props: SidebarNavigationProps) {
         archivedCount={props.archivedCount}
         locale={props.locale ?? 'en'}
         loading={props.loading ?? false}
+        onOpenGraph={props.onOpenGraph}
       />
       {(props.loading || props.entries.some((entry) => entry.favorite && !entry.archived)) && (
         <SidebarFavoritesNavigation
@@ -596,6 +599,7 @@ function SidebarRuntimeNavigation({
       typeInteractions={runtime.typeInteractions}
       isSectionVisible={runtime.isSectionVisible}
       toggleVisibility={runtime.toggleVisibility}
+      onOpenGraph={props.onOpenGraph}
     />
   )
 }
