@@ -5,10 +5,13 @@
  */
 
 let vaultApiAvailable: boolean | null = null
+/** Deduplicates concurrent availability checks — all callers share one in-flight ping. */
+let vaultApiCheckPromise: Promise<boolean> | null = null
 
 async function detectVaultApiAvailability(): Promise<boolean> {
   try {
-    const res = await fetch('/api/vault/ping', { signal: AbortSignal.timeout(500) })
+    // 3 s timeout: handles cold-start TLS + Cloudflare + nginx latency
+    const res = await fetch('/api/vault/ping', { signal: AbortSignal.timeout(3000) })
     return res.ok
   } catch {
     return false
@@ -18,10 +21,16 @@ async function detectVaultApiAvailability(): Promise<boolean> {
 async function checkVaultApi(): Promise<boolean> {
   if (vaultApiAvailable === true) return true
 
-  const available = await detectVaultApiAvailability()
-  vaultApiAvailable = available
-  console.info(`[mock-tauri] Vault API available: ${vaultApiAvailable}`)
-  return available
+  // All concurrent calls share one ping — no thundering-herd on startup
+  if (!vaultApiCheckPromise) {
+    vaultApiCheckPromise = detectVaultApiAvailability().then((available) => {
+      vaultApiAvailable = available
+      vaultApiCheckPromise = null
+      console.info(`[mock-tauri] Vault API available: ${vaultApiAvailable}`)
+      return available
+    })
+  }
+  return vaultApiCheckPromise
 }
 
 interface VaultApiRequest {

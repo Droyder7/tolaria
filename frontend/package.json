@@ -1,0 +1,7 @@
+{
+  "name": "tolaria-frontend-launcher",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "npx --yes serve -s /app/dist -l 3000"
+  }
+}

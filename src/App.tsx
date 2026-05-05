@@ -49,6 +49,7 @@ import { useVaultSwitcher } from './hooks/useVaultSwitcher'
 import { useGitHistory } from './hooks/useGitHistory'
 import { useUpdater, restartApp } from './hooks/useUpdater'
 import { useAutoSync } from './hooks/useAutoSync'
+import { useCloudSync } from './hooks/useCloudSync'
 import { useConflictResolver } from './hooks/useConflictResolver'
 import { useZoom } from './hooks/useZoom'
 import { useVaultConfig } from './hooks/useVaultConfig'
@@ -680,6 +681,13 @@ function App() {
       setToastMessage(`Conflict in ${names} — click to resolve`)
     },
     onToast: (msg) => setToastMessage(msg),
+  })
+  // Cloud sync: polls /api/vault/sync/pull for remote changes when using a
+  // cloud vault_store path. Triggers vault.reloadVault() on new remote changes.
+  const cloudSync = useCloudSync({
+    enabled: !!resolvedPath && resolvedPath.includes('/vault_store/'),
+    vaultId: resolvedPath?.split('/vault_store/')?.[1]?.split('/')?.[0] ?? 'default',
+    onRemoteChanges: () => { void vault.reloadVault() },
   })
   const pendingDiffRequestIdRef = useRef(0)
   const [pendingDiffRequest, setPendingDiffRequest] = useState<CommitDiffRequest | null>(null)
