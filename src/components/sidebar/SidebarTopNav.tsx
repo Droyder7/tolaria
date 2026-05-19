@@ -1,4 +1,4 @@
-import { Archive, FileText, Tray } from '@phosphor-icons/react'
+import { Archive, FileText, Graph, Tray } from '@phosphor-icons/react'
 import type { SidebarSelection } from '../../types'
 import { isSelectionActive, NavItem } from '../SidebarParts'
 import { translate, type AppLocale } from '../../lib/i18n'
@@ -12,6 +12,7 @@ interface SidebarTopNavProps {
   archivedCount: number
   locale?: AppLocale
   loading?: boolean
+  onOpenGraph?: () => void
 }
 
 export function SidebarTopNav({
@@ -23,6 +24,7 @@ export function SidebarTopNav({
   archivedCount,
   locale = 'en',
   loading = false,
+  onOpenGraph,
 }: SidebarTopNavProps) {
   return (
     <div className="border-b border-border" data-testid="sidebar-top-nav" style={{ padding: '4px 6px' }}>
@@ -61,6 +63,15 @@ export function SidebarTopNav({
         activeBadgeClassName="bg-primary text-primary-foreground"
         onClick={() => onSelect({ kind: 'filter', filter: 'archived' })}
       />
+      {onOpenGraph && (
+        <NavItem
+          icon={Graph}
+          label="Graph"
+          isActive={false}
+          onClick={onOpenGraph}
+          data-testid="sidebar-graph-button"
+        />
+      )}
     </div>
   )
 }
