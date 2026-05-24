@@ -89,7 +89,9 @@ function drawNodeLabel(
   isDarkMode: boolean,
   focusNodeId: string | null | undefined,
   hoveredNode: string | null,
-  radius: number
+  radius: number,
+  x: number,
+  y: number
 ) {
   const isHovered = node.id === hoveredNode
   const isHighDegree = node.val > 3
@@ -107,7 +109,7 @@ function drawNodeLabel(
   if (labelText.length > 20 && !isHovered) {
     labelText = labelText.substring(0, 17) + '...'
   }
-  ctx.fillText(labelText, node.x!, node.y! + radius + 3)
+  ctx.fillText(labelText, x, y + radius + 3)
 }
 
 interface ValidLinkEndpoints {
@@ -259,7 +261,7 @@ export function GraphView({
         drawNormalNode(ctx, node.x, node.y, radius, glowColor, isActive, isHovered, isDarkMode)
       }
 
-      drawNodeLabel(ctx, node, globalScale, isDarkMode, focusNodeId, hoveredNode, radius)
+      drawNodeLabel(ctx, node, globalScale, isDarkMode, focusNodeId, hoveredNode, radius, node.x, node.y)
 
       ctx.restore()
     },
