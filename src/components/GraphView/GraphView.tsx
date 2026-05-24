@@ -1,5 +1,10 @@
 import { useRef, useEffect, useState, useCallback, useMemo } from 'react'
-import ForceGraph2D from 'react-force-graph-2d'
+import ForceGraph2D, {
+  type ForceGraphMethods,
+  type NodeObject,
+  type LinkObject,
+  type GraphData as ForceGraphData,
+} from 'react-force-graph-2d'
 import type { GraphNode, GraphData } from './useGraphData'
 import { filterByDepth } from './useGraphData'
 
@@ -11,6 +16,15 @@ interface GraphViewProps {
   isDarkMode?: boolean
 }
 
+function getNodeId(nodeOrId: string | number | NodeObject<GraphNode> | undefined): string | null {
+  if (typeof nodeOrId === 'string') return nodeOrId
+  if (typeof nodeOrId === 'number') return String(nodeOrId)
+  if (nodeOrId && typeof nodeOrId === 'object' && nodeOrId.id !== undefined) {
+    return String(nodeOrId.id)
+  }
+  return null
+}
+
 export function GraphView({
   data,
   onNodeClick,
@@ -19,7 +33,9 @@ export function GraphView({
   isDarkMode = true,
 }: GraphViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const graphRef = useRef<any>(null)
+  const graphRef = useRef<
+    ForceGraphMethods<NodeObject<GraphNode>, LinkObject<GraphNode, unknown>> | undefined
+  >(undefined)
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [hoveredNode, setHoveredNode] = useState<string | null>(null)
 
@@ -43,22 +59,23 @@ export function GraphView({
 
   // Center camera on focused node
   useEffect(() => {
-    if (!graphRef.current) return
+    const graph = graphRef.current
+    if (!graph) return
 
     if (focusNodeId) {
       // Find the node coordinate after simulation warm-up/cool down
       setTimeout(() => {
         const node = displayData.nodes.find((n) => n.id === focusNodeId)
         if (node && node.x !== undefined && node.y !== undefined) {
-          graphRef.current.centerAt(node.x, node.y, 800) // 800ms pan transition
-          graphRef.current.zoom(2.2, 800)               // 2.2x zoom transition
+          graph.centerAt(node.x, node.y, 800) // 800ms pan transition
+          graph.zoom(2.2, 800)               // 2.2x zoom transition
         }
       }, 50)
     } else {
       // Reset view to fit all nodes
       setTimeout(() => {
         if (displayData.nodes.length > 0) {
-          graphRef.current.zoomToFit(800, 40) // fit within 40px padding
+          graph.zoomToFit(800, 40) // fit within 40px padding
         }
       }, 50)
     }
@@ -68,8 +85,8 @@ export function GraphView({
   const neighborMap = useMemo(() => {
     const map = new Map<string, Set<string>>()
     for (const link of displayData.links) {
-      const s = typeof link.source === 'object' ? (link.source as any).id : link.source
-      const t = typeof link.target === 'object' ? (link.target as any).id : link.target
+      const s = getNodeId(link.source)
+      const t = getNodeId(link.target)
       if (!s || !t) continue
       if (!map.has(s)) map.set(s, new Set())
       if (!map.has(t)) map.set(t, new Set())
@@ -89,8 +106,8 @@ export function GraphView({
   )
 
   const handleNodeClick = useCallback(
-    (node: any) => {
-      onNodeClick(node.id)
+    (node: NodeObject<GraphNode>) => {
+      onNodeClick(String(node.id))
     },
     [onNodeClick]
   )
@@ -175,13 +192,23 @@ export function GraphView({
 
   // Custom link renderer
   const drawLink = useCallback(
-    (link: any, ctx: CanvasRenderingContext2D) => {
+    (link: LinkObject<GraphNode, unknown>, ctx: CanvasRenderingContext2D) => {
+      if (typeof link.source !== 'object' || typeof link.target !== 'object') return
       const s = link.source
       const t = link.target
-      if (!s || !t || s.x === undefined || t.x === undefined) return
+      if (
+        s.id === undefined ||
+        t.id === undefined ||
+        s.x === undefined ||
+        s.y === undefined ||
+        t.x === undefined ||
+        t.y === undefined
+      ) {
+        return
+      }
 
-      const sActive = isNeighborOrSelf(s.id)
-      const tActive = isNeighborOrSelf(t.id)
+      const sActive = isNeighborOrSelf(String(s.id))
+      const tActive = isNeighborOrSelf(String(t.id))
       const isActive = sActive && tActive
 
       ctx.save()
@@ -207,6 +234,15 @@ export function GraphView({
     [isNeighborOrSelf, isDarkMode]
   )
 
+  const forceGraphData = useMemo(
+    () =>
+      displayData as unknown as ForceGraphData<
+        NodeObject<GraphNode>,
+        LinkObject<GraphNode, unknown>
+      >,
+    [displayData]
+  )
+
   return (
     <div
       ref={containerRef}
@@ -218,9 +254,9 @@ export function GraphView({
         ref={graphRef}
         width={dimensions.width}
         height={dimensions.height}
-        graphData={displayData as any}
+        graphData={forceGraphData}
         backgroundColor="transparent"
-        nodeCanvasObject={drawNode as any}
+        nodeCanvasObject={drawNode}
         linkCanvasObject={drawLink}
         nodePointerAreaPaint={(node: GraphNode, color, ctx) => {
           // Increase pointer footprint to make clicking small nodes easier
@@ -230,7 +266,9 @@ export function GraphView({
           ctx.arc(node.x!, node.y!, radius, 0, Math.PI * 2)
           ctx.fill()
         }}
-        onNodeHover={(node: any) => setHoveredNode(node ? (node as GraphNode).id : null)}
+        onNodeHover={(node: NodeObject<GraphNode> | null) =>
+          setHoveredNode(node ? String(node.id) : null)
+        }
         onNodeClick={handleNodeClick}
         onNodeDragEnd={(node) => {
           // Keep nodes pinned where dragged if desired, or let physics take back

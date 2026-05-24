@@ -48,15 +48,11 @@ export function GraphViewPanel({
     [entries, showOrphans, showGhosts, search]
   )
 
-  // Reset focus when focus node is removed from filtered data
-  useEffect(() => {
-    if (focusNodeId) {
-      const nodeExists = graphData.nodes.some((n) => n.id === focusNodeId)
-      if (!nodeExists) {
-        setFocusNodeId(null)
-      }
-    }
-  }, [graphData, focusNodeId])
+  const effectiveFocusNodeId = useMemo(() => {
+    if (!focusNodeId) return null
+    const nodeExists = graphData.nodes.some((n) => n.id === focusNodeId)
+    return nodeExists ? focusNodeId : null
+  }, [focusNodeId, graphData])
 
   const handleNodeClick = (nodeTitle: string) => {
     const resolvedEntry = entries.find(
@@ -79,7 +75,7 @@ export function GraphViewPanel({
     <div className="relative h-full w-full">
       <GraphView
         data={graphData}
-        focusNodeId={focusNodeId}
+        focusNodeId={effectiveFocusNodeId}
         depth={depth}
         onNodeClick={handleNodeClick}
         isDarkMode={isDarkMode}
@@ -93,9 +89,9 @@ export function GraphViewPanel({
         onShowGhostsChange={setShowGhosts}
         search={search}
         onSearchChange={setSearch}
-        isFocused={!!focusNodeId}
+        isFocused={!!effectiveFocusNodeId}
         onClearFocus={() => setFocusNodeId(null)}
-        focusNodeId={focusNodeId}
+        focusNodeId={effectiveFocusNodeId}
       />
     </div>
   )
