@@ -168,21 +168,36 @@ export function buildGraphData(
   return { nodes, links: filteredLinks }
 }
 
+function buildAdjacency(links: GraphLink[]): Map<string, Set<string>> {
+  const adjacency = new Map<string, Set<string>>()
+  for (const link of links) {
+    const s = link.source
+    const t = link.target
+    
+    let sSet = adjacency.get(s)
+    if (!sSet) {
+      sSet = new Set()
+      adjacency.set(s, sSet)
+    }
+    
+    let tSet = adjacency.get(t)
+    if (!tSet) {
+      tSet = new Set()
+      adjacency.set(t, tSet)
+    }
+    
+    sSet.add(t)
+    tSet.add(s)
+  }
+  return adjacency
+}
+
 export function filterByDepth(
   data: GraphData,
   focusNodeId: string,
   maxDepth: number
 ): GraphData {
-  const adjacency = new Map<string, Set<string>>()
-  
-  for (const link of data.links) {
-    const s = link.source
-    const t = link.target
-    if (!adjacency.has(s)) adjacency.set(s, new Set())
-    if (!adjacency.has(t)) adjacency.set(t, new Set())
-    adjacency.get(s)!.add(t)
-    adjacency.get(t)!.add(s) // undirected traversal
-  }
+  const adjacency = buildAdjacency(data.links)
 
   const visited = new Set<string>()
   let frontier = [focusNodeId]
@@ -192,8 +207,12 @@ export function filterByDepth(
     for (const nodeId of frontier) {
       if (visited.has(nodeId)) continue
       visited.add(nodeId)
-      for (const neighbor of adjacency.get(nodeId) ?? []) {
-        next.push(neighbor)
+      
+      const neighbors = adjacency.get(nodeId)
+      if (neighbors) {
+        for (const neighbor of neighbors) {
+          next.push(neighbor)
+        }
       }
     }
     frontier = next

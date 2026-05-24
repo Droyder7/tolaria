@@ -25,6 +25,96 @@ function getNodeId(nodeOrId: string | number | NodeObject<GraphNode> | undefined
   return null
 }
 
+function drawGhostNode(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  isDarkMode: boolean
+) {
+  // Ghost Node: Muted dashed circle
+  ctx.beginPath()
+  ctx.arc(x, y, radius, 0, Math.PI * 2)
+  ctx.strokeStyle = isDarkMode ? 'rgba(156, 163, 175, 0.7)' : 'rgba(107, 114, 128, 0.7)'
+  ctx.lineWidth = 1.5
+  ctx.setLineDash([3, 3])
+  ctx.stroke()
+  ctx.setLineDash([]) // reset
+
+  // Light background fill inside ghost circle
+  ctx.fillStyle = isDarkMode ? 'rgba(31, 41, 55, 0.3)' : 'rgba(243, 244, 246, 0.5)'
+  ctx.fill()
+}
+
+function drawNormalNode(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  radius: number,
+  glowColor: string,
+  isActive: boolean,
+  isHovered: boolean,
+  isDarkMode: boolean
+) {
+  // Normal Node: Soft glow halo (Dark mode only)
+  if (isDarkMode && isActive) {
+    ctx.beginPath()
+    ctx.arc(x, y, radius + 4.5, 0, Math.PI * 2)
+    ctx.shadowColor = glowColor
+    ctx.shadowBlur = isHovered ? 24 : 14
+    ctx.fillStyle = glowColor + '26' // ~15% opacity fill
+    ctx.fill()
+  }
+
+  // Node core
+  ctx.beginPath()
+  ctx.arc(x, y, radius, 0, Math.PI * 2)
+  ctx.shadowColor = glowColor
+  ctx.shadowBlur = isDarkMode ? (isHovered ? 18 : 8) : 0
+  ctx.fillStyle = glowColor
+  ctx.fill()
+
+  // Crisp solid border in light mode or for contrast
+  if (!isDarkMode) {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
+    ctx.lineWidth = 1
+    ctx.stroke()
+  }
+}
+
+interface ValidLinkEndpoints {
+  sourceId: string
+  targetId: string
+  sx: number
+  sy: number
+  tx: number
+  ty: number
+}
+
+function getLinkEndpoints(link: LinkObject<GraphNode, unknown>): ValidLinkEndpoints | null {
+  if (typeof link.source !== 'object' || typeof link.target !== 'object') return null
+  const s = link.source
+  const t = link.target
+  if (
+    s.id === undefined ||
+    t.id === undefined ||
+    s.x === undefined ||
+    s.y === undefined ||
+    t.x === undefined ||
+    t.y === undefined
+  ) {
+    return null
+  }
+  return {
+    sourceId: String(s.id),
+    targetId: String(t.id),
+    sx: s.x,
+    sy: s.y,
+    tx: t.x,
+    ty: t.y,
+  }
+}
+
 export function GraphView({
   data,
   onNodeClick,
@@ -88,10 +178,19 @@ export function GraphView({
       const s = getNodeId(link.source)
       const t = getNodeId(link.target)
       if (!s || !t) continue
-      if (!map.has(s)) map.set(s, new Set())
-      if (!map.has(t)) map.set(t, new Set())
-      map.get(s)!.add(t)
-      map.get(t)!.add(s)
+      
+      let sSet = map.get(s)
+      if (!sSet) {
+        sSet = new Set()
+        map.set(s, sSet)
+      }
+      let tSet = map.get(t)
+      if (!tSet) {
+        tSet = new Set()
+        map.set(t, tSet)
+      }
+      sSet.add(t)
+      tSet.add(s)
     }
     return map
   }, [displayData])
@@ -115,57 +214,27 @@ export function GraphView({
   // Custom node renderer
   const drawNode = useCallback(
     (node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
+      if (node.x === undefined || node.y === undefined) return
+      const x = node.x
+      const y = node.y
+
       const isActive = isNeighborOrSelf(node.id)
       const radius = Math.sqrt(node.val) * 3 + 2.5
       const alpha = isActive ? 1.0 : 0.15
       const glowColor = node.color || '#6b7280'
+      const isHovered = node.id === hoveredNode
 
       ctx.save()
       ctx.globalAlpha = alpha
 
       if (node.isGhost) {
-        // Ghost Node: Muted dashed circle
-        ctx.beginPath()
-        ctx.arc(node.x!, node.y!, radius, 0, Math.PI * 2)
-        ctx.strokeStyle = isDarkMode ? 'rgba(156, 163, 175, 0.7)' : 'rgba(107, 114, 128, 0.7)'
-        ctx.lineWidth = 1.5
-        ctx.setLineDash([3, 3])
-        ctx.stroke()
-        ctx.setLineDash([]) // reset
-
-        // Light background fill inside ghost circle
-        ctx.fillStyle = isDarkMode ? 'rgba(31, 41, 55, 0.3)' : 'rgba(243, 244, 246, 0.5)'
-        ctx.fill()
+        drawGhostNode(ctx, x, y, radius, isDarkMode)
       } else {
-        // Normal Node: Soft glow halo (Dark mode only)
-        if (isDarkMode && isActive) {
-          ctx.beginPath()
-          ctx.arc(node.x!, node.y!, radius + 4.5, 0, Math.PI * 2)
-          ctx.shadowColor = glowColor
-          ctx.shadowBlur = node.id === hoveredNode ? 24 : 14
-          ctx.fillStyle = glowColor + '26' // ~15% opacity fill
-          ctx.fill()
-        }
-
-        // Node core
-        ctx.beginPath()
-        ctx.arc(node.x!, node.y!, radius, 0, Math.PI * 2)
-        ctx.shadowColor = glowColor
-        ctx.shadowBlur = isDarkMode ? (node.id === hoveredNode ? 18 : 8) : 0
-        ctx.fillStyle = glowColor
-        ctx.fill()
-
-        // Crisp solid border in light mode or for contrast
-        if (!isDarkMode) {
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)'
-          ctx.lineWidth = 1
-          ctx.stroke()
-        }
+        drawNormalNode(ctx, x, y, radius, glowColor, isActive, isHovered, isDarkMode)
       }
 
       // Render Label (at high zoom or for highlighted/high-degree nodes)
       const isHighDegree = node.val > 3
-      const isHovered = node.id === hoveredNode
       const showLabel = globalScale > 1.1 || isHovered || isHighDegree
 
       if (showLabel) {
@@ -182,7 +251,7 @@ export function GraphView({
           labelText = labelText.substring(0, 17) + '...'
         }
         
-        ctx.fillText(labelText, node.x!, node.y! + radius + 3)
+        ctx.fillText(labelText, x, y + radius + 3)
       }
 
       ctx.restore()
@@ -193,28 +262,19 @@ export function GraphView({
   // Custom link renderer
   const drawLink = useCallback(
     (link: LinkObject<GraphNode, unknown>, ctx: CanvasRenderingContext2D) => {
-      if (typeof link.source !== 'object' || typeof link.target !== 'object') return
-      const s = link.source
-      const t = link.target
-      if (
-        s.id === undefined ||
-        t.id === undefined ||
-        s.x === undefined ||
-        s.y === undefined ||
-        t.x === undefined ||
-        t.y === undefined
-      ) {
-        return
-      }
+      const endpoints = getLinkEndpoints(link)
+      if (!endpoints) return
 
-      const sActive = isNeighborOrSelf(String(s.id))
-      const tActive = isNeighborOrSelf(String(t.id))
+      const { sourceId, targetId, sx, sy, tx, ty } = endpoints
+      const sActive = isNeighborOrSelf(sourceId)
+      const tActive = isNeighborOrSelf(targetId)
       const isActive = sActive && tActive
 
       ctx.save()
+      ctx.save()
       ctx.beginPath()
-      ctx.moveTo(s.x, s.y)
-      ctx.lineTo(t.x, t.y)
+      ctx.moveTo(sx, sy)
+      ctx.lineTo(tx, ty)
 
       if (isDarkMode) {
         ctx.strokeStyle = isActive
@@ -229,6 +289,7 @@ export function GraphView({
       }
 
       ctx.stroke()
+      ctx.restore()
       ctx.restore()
     },
     [isNeighborOrSelf, isDarkMode]
@@ -259,11 +320,12 @@ export function GraphView({
         nodeCanvasObject={drawNode}
         linkCanvasObject={drawLink}
         nodePointerAreaPaint={(node: GraphNode, color, ctx) => {
+          if (node.x === undefined || node.y === undefined) return
           // Increase pointer footprint to make clicking small nodes easier
           const radius = Math.sqrt(node.val) * 3 + 8.5
           ctx.fillStyle = color
           ctx.beginPath()
-          ctx.arc(node.x!, node.y!, radius, 0, Math.PI * 2)
+          ctx.arc(node.x, node.y, radius, 0, Math.PI * 2)
           ctx.fill()
         }}
         onNodeHover={(node: NodeObject<GraphNode> | null) =>

@@ -16,19 +16,21 @@ interface GraphControlsProps {
   focusNodeId?: string | null
 }
 
-export function GraphControls({
-  depth,
-  onDepthChange,
-  showOrphans,
-  onShowOrphansChange,
-  showGhosts,
-  onShowGhostsChange,
-  search,
-  onSearchChange,
-  isFocused,
-  onClearFocus,
-  focusNodeId,
-}: GraphControlsProps) {
+export function GraphControls(props: GraphControlsProps) {
+  const {
+    depth,
+    onDepthChange,
+    showOrphans,
+    onShowOrphansChange,
+    showGhosts,
+    onShowGhostsChange,
+    search,
+    onSearchChange,
+    isFocused,
+    onClearFocus,
+    focusNodeId,
+  } = props
+
   return (
     <div className="absolute bottom-4 left-4 z-20 flex w-64 flex-col gap-4 rounded-xl border border-border bg-background/70 p-4 shadow-2xl backdrop-blur-md transition-all duration-300 ease-in-out select-none">
       {/* Header / Title */}
@@ -38,6 +40,7 @@ export function GraphControls({
         </span>
         {isFocused && (
           <button
+            type="button"
             onClick={onClearFocus}
             className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium bg-destructive/10 text-destructive hover:bg-destructive/20 active:scale-95 transition-all cursor-pointer"
           >
@@ -61,6 +64,7 @@ export function GraphControls({
         />
         {search && (
           <button
+            type="button"
             onClick={() => onSearchChange('')}
             className="absolute right-2 text-muted-foreground/60 hover:text-foreground cursor-pointer"
           >
