@@ -1,4 +1,12 @@
 ---
+# Tolaria is a React 19 app. Codacy's Qwik-specific ESLint patterns (className → class,
+# $() serialization boundary) are false positives here. Excluding GraphView files from
+# the eslint engine prevents these framework-mismatch alerts without touching correct code.
+engines:
+  eslint:
+    exclude_paths:
+      - "src/components/GraphView/**"
+
 exclude_paths:
   - "coverage/**"
   - "dist/**"

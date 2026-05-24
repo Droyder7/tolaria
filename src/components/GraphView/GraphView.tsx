@@ -82,6 +82,34 @@ function drawNormalNode(
   }
 }
 
+function drawNodeLabel(
+  ctx: CanvasRenderingContext2D,
+  node: GraphNode,
+  globalScale: number,
+  isDarkMode: boolean,
+  focusNodeId: string | null | undefined,
+  hoveredNode: string | null,
+  radius: number
+) {
+  const isHovered = node.id === hoveredNode
+  const isHighDegree = node.val > 3
+  const showLabel = globalScale > 1.1 || isHovered || isHighDegree
+  if (!showLabel) return
+
+  const fontSize = Math.max(7, Math.min(11, 11 / globalScale))
+  ctx.font = `${node.id === focusNodeId ? 'bold ' : ''}${fontSize}px Inter, -apple-system, sans-serif`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'top'
+  ctx.shadowBlur = 0
+  ctx.fillStyle = isDarkMode ? '#f3f4f6' : '#1f2937'
+
+  let labelText = node.title
+  if (labelText.length > 20 && !isHovered) {
+    labelText = labelText.substring(0, 17) + '...'
+  }
+  ctx.fillText(labelText, node.x!, node.y! + radius + 3)
+}
+
 interface ValidLinkEndpoints {
   sourceId: string
   targetId: string
@@ -215,8 +243,6 @@ export function GraphView({
   const drawNode = useCallback(
     (node: GraphNode, ctx: CanvasRenderingContext2D, globalScale: number) => {
       if (node.x === undefined || node.y === undefined) return
-      const x = node.x
-      const y = node.y
 
       const isActive = isNeighborOrSelf(node.id)
       const radius = Math.sqrt(node.val) * 3 + 2.5
@@ -228,31 +254,12 @@ export function GraphView({
       ctx.globalAlpha = alpha
 
       if (node.isGhost) {
-        drawGhostNode(ctx, x, y, radius, isDarkMode)
+        drawGhostNode(ctx, node.x, node.y, radius, isDarkMode)
       } else {
-        drawNormalNode(ctx, x, y, radius, glowColor, isActive, isHovered, isDarkMode)
+        drawNormalNode(ctx, node.x, node.y, radius, glowColor, isActive, isHovered, isDarkMode)
       }
 
-      // Render Label (at high zoom or for highlighted/high-degree nodes)
-      const isHighDegree = node.val > 3
-      const showLabel = globalScale > 1.1 || isHovered || isHighDegree
-
-      if (showLabel) {
-        const fontSize = Math.max(7, Math.min(11, 11 / globalScale))
-        ctx.font = `${node.id === focusNodeId ? 'bold ' : ''}${fontSize}px Inter, -apple-system, sans-serif`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'top'
-        ctx.shadowBlur = 0
-        ctx.fillStyle = isDarkMode ? '#f3f4f6' : '#1f2937'
-
-        // Truncate long titles for neatness
-        let labelText = node.title
-        if (labelText.length > 20 && !isHovered) {
-          labelText = labelText.substring(0, 17) + '...'
-        }
-        
-        ctx.fillText(labelText, x, y + radius + 3)
-      }
+      drawNodeLabel(ctx, node, globalScale, isDarkMode, focusNodeId, hoveredNode, radius)
 
       ctx.restore()
     },
