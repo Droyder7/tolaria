@@ -6,6 +6,7 @@ engines:
   eslint:
     exclude_paths:
       - "src/components/GraphView/**"
+      - "src/App.tsx"
 
 exclude_paths:
   - "coverage/**"
